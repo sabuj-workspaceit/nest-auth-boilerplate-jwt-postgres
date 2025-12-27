@@ -23,7 +23,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { hashPassword, comparePassword, hashToken, compareToken } from '../../utils/hash.util';
 import { generateOTP } from '../../utils/otp.util';
 import { randomUUID } from 'crypto';
-import { authenticator } from 'otplib';
+import * as OTPAuth from 'otpauth';
 import { toDataURL } from 'qrcode';
 
 @Injectable()
@@ -464,8 +464,16 @@ export class AuthService {
     }
 
     async generateTwoFactorSecret(user: User) {
-        const secret = authenticator.generateSecret();
-        const otpauthUrl = authenticator.keyuri(user.email, 'NEST_AUTH_APP', secret);
+        const secret = new OTPAuth.Secret().base32;
+        const totp = new OTPAuth.TOTP({
+            issuer: 'NEST_AUTH_APP',
+            label: user.email,
+            algorithm: 'SHA1',
+            digits: 6,
+            period: 30,
+            secret: OTPAuth.Secret.fromBase32(secret),
+        });
+        const otpauthUrl = totp.toString();
 
         await this.userRepository.update(
             { id: user.id },
@@ -483,10 +491,17 @@ export class AuthService {
             throw new BadRequestException('2FA secret not generated');
         }
 
-        const isValid = authenticator.verify({
-            token: code,
-            secret: user.twoFactorAuthenticationSecret,
+        const totp = new OTPAuth.TOTP({
+            algorithm: 'SHA1',
+            digits: 6,
+            period: 30,
+            secret: OTPAuth.Secret.fromBase32(user.twoFactorAuthenticationSecret),
         });
+
+        const isValid = totp.validate({
+            token: code,
+            window: 1,
+        }) !== null;
 
         if (!isValid) {
             throw new BadRequestException('Invalid authentication code');
@@ -505,10 +520,17 @@ export class AuthService {
             throw new BadRequestException('2FA is not enabled for this user');
         }
 
-        const isValid = authenticator.verify({
-            token: code,
-            secret: user.twoFactorAuthenticationSecret,
+        const totp = new OTPAuth.TOTP({
+            algorithm: 'SHA1',
+            digits: 6,
+            period: 30,
+            secret: OTPAuth.Secret.fromBase32(user.twoFactorAuthenticationSecret),
         });
+
+        const isValid = totp.validate({
+            token: code,
+            window: 1,
+        }) !== null;
 
         if (!isValid) {
             throw new UnauthorizedException('Invalid 2FA code');
@@ -528,10 +550,17 @@ export class AuthService {
             throw new BadRequestException('2FA is not enabled for this user');
         }
 
-        const isCodeValid = authenticator.verify({
-            token: code,
-            secret: user.twoFactorAuthenticationSecret,
+        const totp = new OTPAuth.TOTP({
+            algorithm: 'SHA1',
+            digits: 6,
+            period: 30,
+            secret: OTPAuth.Secret.fromBase32(user.twoFactorAuthenticationSecret),
         });
+
+        const isCodeValid = totp.validate({
+            token: code,
+            window: 1,
+        }) !== null;
 
         if (!isCodeValid) {
             throw new UnauthorizedException('Invalid 2FA code');
