@@ -30,6 +30,9 @@ describe('AuthController', () => {
         changePassword: jest.fn(),
         getProfile: jest.fn(),
         updateProfile: jest.fn(),
+        generateTwoFactorSecret: jest.fn(),
+        enableTwoFactor: jest.fn(),
+        loginWith2fa: jest.fn(),
     };
 
     beforeEach(async () => {
@@ -337,6 +340,53 @@ describe('AuthController', () => {
                 mockUser.id,
                 updateDto,
             );
+        });
+    });
+
+    describe('TwoFactorAuth', () => {
+        describe('generateTwoFactorSecret', () => {
+            it('should generate 2FA secret and qr code', async () => {
+                const expectedResult = {
+                    secret: 'secret',
+                    qrCodeUrl: 'url',
+                };
+                mockAuthService.generateTwoFactorSecret = jest.fn().mockResolvedValue(expectedResult);
+
+                const result = await controller.generateTwoFactorSecret(mockUser as any);
+
+                expect(result).toEqual(expectedResult);
+                expect(authService.generateTwoFactorSecret).toHaveBeenCalledWith(mockUser);
+            });
+        });
+
+        describe('enableTwoFactor', () => {
+            it('should enable 2FA', async () => {
+                const dto = { code: '123456' };
+                const expectedResult = { message: '2FA enabled successfully' };
+                mockAuthService.enableTwoFactor = jest.fn().mockResolvedValue(expectedResult);
+
+                const result = await controller.enableTwoFactor(mockUser as any, dto);
+
+                expect(result).toEqual(expectedResult);
+                expect(authService.enableTwoFactor).toHaveBeenCalledWith(mockUser, dto.code);
+            });
+        });
+
+        describe('authenticateTwoFactor', () => {
+            it('should authenticate and return tokens', async () => {
+                const dto = { code: '123456' };
+                const email = 'test@example.com';
+                const expectedResult = {
+                    accessToken: 'access-token',
+                    refreshToken: 'refresh-token',
+                };
+                mockAuthService.loginWith2fa = jest.fn().mockResolvedValue(expectedResult);
+
+                const result = await controller.authenticateTwoFactor(dto, email);
+
+                expect(result).toEqual(expectedResult);
+                expect(authService.loginWith2fa).toHaveBeenCalledWith(email, dto.code);
+            });
         });
     });
 });

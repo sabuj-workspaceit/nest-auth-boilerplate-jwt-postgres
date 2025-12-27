@@ -23,6 +23,8 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { hashPassword, comparePassword, hashToken, compareToken } from '../../utils/hash.util';
 import { generateOTP } from '../../utils/otp.util';
 import { randomUUID } from 'crypto';
+import { authenticator } from 'otplib';
+import { toDataURL } from 'qrcode';
 
 @Injectable()
 export class AuthService {
@@ -101,6 +103,17 @@ export class AuthService {
         // Check if email is verified
         if (!user.isEmailVerified) {
             throw new UnauthorizedException('Please verify your email before logging in');
+        }
+
+        if (user.isTwoFactorEnabled) {
+            return {
+                requires2fa: true,
+                message: '2FA verification required',
+                user: {
+                    id: user.id,
+                    email: user.email,
+                },
+            };
         }
 
         // Generate tokens
@@ -448,6 +461,83 @@ export class AuthService {
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };
+    }
+
+    async generateTwoFactorSecret(user: User) {
+        const secret = authenticator.generateSecret();
+        const otpauthUrl = authenticator.keyuri(user.email, 'NEST_AUTH_APP', secret);
+
+        await this.userRepository.update(
+            { id: user.id },
+            { twoFactorAuthenticationSecret: secret },
+        );
+
+        return {
+            secret,
+            qrCodeUrl: await toDataURL(otpauthUrl),
+        };
+    }
+
+    async enableTwoFactor(user: User, code: string) {
+        if (!user.twoFactorAuthenticationSecret) {
+            throw new BadRequestException('2FA secret not generated');
+        }
+
+        const isValid = authenticator.verify({
+            token: code,
+            secret: user.twoFactorAuthenticationSecret,
+        });
+
+        if (!isValid) {
+            throw new BadRequestException('Invalid authentication code');
+        }
+
+        await this.userRepository.update(
+            { id: user.id },
+            { isTwoFactorEnabled: true },
+        );
+
+        return { message: '2FA enabled successfully' };
+    }
+
+    async verifyTwoFactor(user: User, code: string) {
+        if (!user.isTwoFactorEnabled || !user.twoFactorAuthenticationSecret) {
+            throw new BadRequestException('2FA is not enabled for this user');
+        }
+
+        const isValid = authenticator.verify({
+            token: code,
+            secret: user.twoFactorAuthenticationSecret,
+        });
+
+        if (!isValid) {
+            throw new UnauthorizedException('Invalid 2FA code');
+        }
+
+        return true;
+    }
+
+    async loginWith2fa(email: string, code: string) {
+        const user = await this.userRepository.findOne({ where: { email } });
+
+        if (!user) {
+            throw new UnauthorizedException('Invalid credentials');
+        }
+
+        if (!user.isTwoFactorEnabled) {
+            throw new BadRequestException('2FA is not enabled for this user');
+        }
+
+        const isCodeValid = authenticator.verify({
+            token: code,
+            secret: user.twoFactorAuthenticationSecret,
+        });
+
+        if (!isCodeValid) {
+            throw new UnauthorizedException('Invalid 2FA code');
+        }
+
+        return this.generateTokens(user);
     }
 
     // Helper methods

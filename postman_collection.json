@@ -254,6 +254,181 @@
                         "description": "Refresh access token using refresh token. Old refresh token is revoked."
                     },
                     "response": []
+                },
+                {
+                    "name": "6. Generate 2FA",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "    const response = pm.response.json();",
+                                    "    pm.collectionVariables.set('twoFactorSecret', response.secret);",
+                                    "    console.log('2FA Secret generated successfully.');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/2fa/generate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "2fa",
+                                "generate"
+                            ]
+                        },
+                        "description": "Generate 2FA secret and QR code URL."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "7. Enable 2FA",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"code\": \"Wait for user input\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/2fa/enable",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "2fa",
+                                "enable"
+                            ]
+                        },
+                        "description": "Enable 2FA with a valid code. You must take the secret from the previous step, generate a code (e.g. using an app or online tool) and put it here."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "8. Login (2FA)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "    const response = pm.response.json();",
+                                    "    if (response.requires2fa) {",
+                                    "        console.log('2FA required as expected.');",
+                                    "    } else {",
+                                    "         console.log('Warning: 2FA was supposed to be required.');",
+                                    "    }",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"Password123!\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Login when 2FA is enabled. Should return requires2fa: true."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "9. Authenticate 2FA",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    const response = pm.response.json();",
+                                    "    pm.collectionVariables.set('accessToken', response.accessToken);",
+                                    "    pm.collectionVariables.set('refreshToken', response.refreshToken);",
+                                    "    console.log('2FA Authentication successful. Tokens updated.');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"test@example.com\",\n  \"code\": \"Wait for user input\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/2fa/authenticate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "2fa",
+                                "authenticate"
+                            ]
+                        },
+                        "description": "Complete login with 2FA code."
+                    },
+                    "response": []
                 }
             ]
         },

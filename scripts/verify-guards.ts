@@ -59,6 +59,9 @@ async function bootstrap() {
 
         // Login Manager
         const managerLogin = await authService.login({ email: managerEmail, password: 'password123' });
+        if (!('accessToken' in managerLogin)) {
+            throw new Error('Manager login failed or requires 2FA');
+        }
         const managerToken = managerLogin.accessToken;
 
         // Create Normal User
@@ -77,6 +80,9 @@ async function bootstrap() {
 
         // Login Normal User
         const userLogin = await authService.login({ email: userEmail, password: 'password123' });
+        if (!('accessToken' in userLogin)) {
+            throw new Error('User login failed or requires 2FA');
+        }
         const userToken = userLogin.accessToken;
 
 

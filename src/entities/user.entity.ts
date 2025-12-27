@@ -37,6 +37,13 @@ export class User {
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 
+  @Column({ name: 'is_two_factor_enabled', default: false })
+  isTwoFactorEnabled: boolean;
+
+  @Column({ name: 'two_factor_authentication_secret', nullable: true })
+  @Exclude()
+  twoFactorAuthenticationSecret: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

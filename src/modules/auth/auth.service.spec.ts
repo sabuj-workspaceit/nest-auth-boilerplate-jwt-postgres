@@ -24,6 +24,18 @@ import {
 import * as hashUtil from '../../utils/hash.util';
 import * as otpUtil from '../../utils/otp.util';
 
+jest.mock('otplib', () => ({
+    authenticator: {
+        generateSecret: jest.fn(),
+        keyuri: jest.fn(),
+        verify: jest.fn(),
+    },
+}));
+
+jest.mock('qrcode', () => ({
+    toDataURL: jest.fn(),
+}));
+
 describe('AuthService', () => {
     let service: AuthService;
     let userRepository: any;
@@ -50,6 +62,7 @@ describe('AuthService', () => {
         findOne: jest.fn(),
         create: jest.fn(),
         save: jest.fn(),
+        update: jest.fn(),
     };
 
     const mockRefreshTokenRepository = {
@@ -562,6 +575,110 @@ describe('AuthService', () => {
             await expect(
                 service.updateProfile('invalid-id', updateDto),
             ).rejects.toThrow(NotFoundException);
+        });
+    });
+
+    describe('TwoFactorAuth', () => {
+        const mockSecret = 'mockSecret';
+        const mockQrCodeUrl = 'mockQrCodeUrl';
+        const mockCode = '123456';
+
+        describe('generateTwoFactorSecret', () => {
+            it('should generate a 2FA secret and QR code URL', async () => {
+                jest.spyOn(require('otplib').authenticator, 'generateSecret').mockReturnValue(mockSecret);
+                jest.spyOn(require('otplib').authenticator, 'keyuri').mockReturnValue('otpauthUrl');
+                require('qrcode').toDataURL.mockResolvedValue(mockQrCodeUrl);
+                mockUserRepository.update.mockResolvedValue({});
+
+                const result = await service.generateTwoFactorSecret(mockUser as any);
+
+                expect(result).toEqual({
+                    secret: mockSecret,
+                    qrCodeUrl: mockQrCodeUrl,
+                });
+                expect(mockUserRepository.update).toHaveBeenCalledWith(
+                    { id: mockUser.id },
+                    { twoFactorAuthenticationSecret: mockSecret },
+                );
+            });
+        });
+
+        describe('enableTwoFactor', () => {
+            it('should enable 2FA if code is valid', async () => {
+                const userWithSecret = { ...mockUser, twoFactorAuthenticationSecret: mockSecret };
+                jest.spyOn(require('otplib').authenticator, 'verify').mockReturnValue(true);
+                mockUserRepository.update.mockResolvedValue({});
+
+                const result = await service.enableTwoFactor(userWithSecret as any, mockCode);
+
+                expect(result).toEqual({ message: '2FA enabled successfully' });
+                expect(mockUserRepository.update).toHaveBeenCalledWith(
+                    { id: mockUser.id },
+                    { isTwoFactorEnabled: true },
+                );
+            });
+
+            it('should throw BadRequestException if secret not generated', async () => {
+                const userWithoutSecret = { ...mockUser, twoFactorAuthenticationSecret: null };
+
+                await expect(service.enableTwoFactor(userWithoutSecret as any, mockCode)).rejects.toThrow(
+                    BadRequestException,
+                );
+            });
+
+            it('should throw BadRequestException if code is invalid', async () => {
+                const userWithSecret = { ...mockUser, twoFactorAuthenticationSecret: mockSecret };
+                jest.spyOn(require('otplib').authenticator, 'verify').mockReturnValue(false);
+
+                await expect(service.enableTwoFactor(userWithSecret as any, mockCode)).rejects.toThrow(
+                    BadRequestException,
+                );
+            });
+        });
+
+        describe('loginWith2fa', () => {
+            it('should return tokens if 2FA code is valid', async () => {
+                const user2fa = { ...mockUser, isTwoFactorEnabled: true, twoFactorAuthenticationSecret: mockSecret };
+                mockUserRepository.findOne.mockResolvedValue(user2fa);
+                jest.spyOn(require('otplib').authenticator, 'verify').mockReturnValue(true);
+                mockJwtService.sign.mockReturnValue('mock-token');
+                mockRefreshTokenRepository.create.mockReturnValue({});
+                mockRefreshTokenRepository.save.mockResolvedValue({});
+                mockConfigService.get.mockReturnValue('secret');
+                jest.spyOn(hashUtil, 'hashToken').mockResolvedValue('hashedToken');
+
+
+                const result = await service.loginWith2fa(mockUser.email, mockCode);
+
+                expect(result).toHaveProperty('accessToken');
+                expect(result).toHaveProperty('refreshToken');
+            });
+
+            it('should throw UnauthorizedException if user not found', async () => {
+                mockUserRepository.findOne.mockResolvedValue(null);
+                await expect(service.loginWith2fa(mockUser.email, mockCode)).rejects.toThrow(
+                    UnauthorizedException
+                );
+            });
+
+            it('should throw BadRequestException if 2FA is not enabled', async () => {
+                const userNo2fa = { ...mockUser, isTwoFactorEnabled: false };
+                mockUserRepository.findOne.mockResolvedValue(userNo2fa);
+
+                await expect(service.loginWith2fa(mockUser.email, mockCode)).rejects.toThrow(
+                    BadRequestException
+                );
+            });
+
+            it('should throw UnauthorizedException if 2FA code is invalid', async () => {
+                const user2fa = { ...mockUser, isTwoFactorEnabled: true, twoFactorAuthenticationSecret: mockSecret };
+                mockUserRepository.findOne.mockResolvedValue(user2fa);
+                jest.spyOn(require('otplib').authenticator, 'verify').mockReturnValue(false);
+
+                await expect(service.loginWith2fa(mockUser.email, mockCode)).rejects.toThrow(
+                    UnauthorizedException
+                );
+            });
         });
     });
 });

@@ -18,6 +18,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { TwoFactorAuthCodeDto } from './dto/two-factor-auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RefreshTokenGuard } from './guards/refresh-token.guard';
 import { Public } from './decorators/public.decorator';
@@ -108,5 +109,29 @@ export class AuthController {
         @Body() updateProfileDto: UpdateProfileDto,
     ) {
         return this.authService.updateProfile(user.id, updateProfileDto);
+    }
+
+    @Post('2fa/generate')
+    async generateTwoFactorSecret(@CurrentUser() user: User) {
+        return this.authService.generateTwoFactorSecret(user);
+    }
+
+    @Post('2fa/enable')
+    @HttpCode(HttpStatus.OK)
+    async enableTwoFactor(
+        @CurrentUser() user: User,
+        @Body() twoFactorAuthCodeDto: TwoFactorAuthCodeDto,
+    ) {
+        return this.authService.enableTwoFactor(user, twoFactorAuthCodeDto.code);
+    }
+
+    @Public()
+    @Post('2fa/authenticate')
+    @HttpCode(HttpStatus.OK)
+    async authenticateTwoFactor(
+        @Body() twoFactorAuthCodeDto: TwoFactorAuthCodeDto,
+        @Body('email') email: string,
+    ) {
+        return this.authService.loginWith2fa(email, twoFactorAuthCodeDto.code);
     }
 }
