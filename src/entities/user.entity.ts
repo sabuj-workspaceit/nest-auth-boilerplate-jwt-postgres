@@ -7,9 +7,11 @@ import {
   OneToMany,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
-import { RefreshToken } from './refresh-token.entity';
-import { EmailVerification } from './email-verification.entity';
-import { PasswordReset } from './password-reset.entity';
+import { RefreshToken } from '../modules/auth/entities/refresh-token.entity';
+import { EmailVerification } from '../modules/auth/entities/email-verification.entity';
+import { PasswordReset } from '../modules/auth/entities/password-reset.entity';
+import { Role } from './role.entity';
+import { ManyToMany, JoinTable } from 'typeorm';
 
 @Entity('users')
 export class User {
@@ -52,4 +54,12 @@ export class User {
 
   @OneToMany(() => PasswordReset, (passwordReset) => passwordReset.user)
   passwordResets: PasswordReset[];
+
+  @ManyToMany(() => Role)
+  @JoinTable({
+    name: 'user_roles',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
+  })
+  roles: Role[];
 }

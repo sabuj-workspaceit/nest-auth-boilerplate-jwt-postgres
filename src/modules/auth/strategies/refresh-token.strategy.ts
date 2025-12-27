@@ -4,23 +4,32 @@ import { PassportStrategy } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Repository } from 'typeorm';
-import { User } from '../../entities/user.entity';
+import { User } from '../../../entities/user.entity';
+import { RefreshToken } from '../entities/refresh-token.entity';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+export class RefreshTokenStrategy extends PassportStrategy(
+    Strategy,
+    'jwt-refresh',
+) {
     constructor(
         private configService: ConfigService,
         @InjectRepository(User)
         private userRepository: Repository<User>,
+        @InjectRepository(RefreshToken)
+        private refreshTokenRepository: Repository<RefreshToken>,
     ) {
         super({
-            jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+            jwtFromRequest: ExtractJwt.fromBodyField('refreshToken'),
             ignoreExpiration: false,
-            secretOrKey: configService.get<string>('jwt.access.secret') || 'secret',
+            secretOrKey: configService.get<string>('jwt.refresh.secret') || 'secret',
+            passReqToCallback: true,
         });
     }
 
-    async validate(payload: any): Promise<User> {
+    async validate(req: any, payload: any): Promise<any> {
+        const refreshToken = req.body.refreshToken;
+
         const user = await this.userRepository.findOne({
             where: { id: payload.sub },
         });
@@ -29,6 +38,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             throw new UnauthorizedException('User not found or inactive');
         }
 
-        return user;
+        return { user, refreshToken };
     }
 }

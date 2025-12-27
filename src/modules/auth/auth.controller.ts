@@ -22,7 +22,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RefreshTokenGuard } from './guards/refresh-token.guard';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
-import { User } from '../entities/user.entity';
+import { User } from '../../entities/user.entity';
 
 @Controller('auth')
 @UseGuards(JwtAuthGuard)

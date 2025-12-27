@@ -3,7 +3,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { ConfigService } from '@nestjs/config';
 import { UnauthorizedException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { User } from '../../entities/user.entity';
+import { User } from '../../../entities/user.entity';
 
 describe('JwtStrategy', () => {
     let strategy: JwtStrategy;
@@ -54,6 +54,7 @@ describe('JwtStrategy', () => {
             expect(result).toEqual(mockUser);
             expect(userRepository.findOne).toHaveBeenCalledWith({
                 where: { id: payload.sub },
+                relations: ['roles', 'roles.permissions'],
             });
         });
 

@@ -6,27 +6,27 @@ import {
     ManyToOne,
     JoinColumn,
 } from 'typeorm';
-import { User } from './user.entity';
+import { User } from '../../../entities/user.entity';
 
-@Entity('email_verifications')
-export class EmailVerification {
+@Entity('password_resets')
+export class PasswordReset {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
     @Column({ name: 'user_id' })
     userId: string;
 
-    @ManyToOne(() => User, (user) => user.emailVerifications, {
+    @ManyToOne(() => User, (user) => user.passwordResets, {
         onDelete: 'CASCADE',
     })
     @JoinColumn({ name: 'user_id' })
     user: User;
 
     @Column({ nullable: true })
-    otp: string;
+    token: string;
 
     @Column({ nullable: true })
-    token: string;
+    otp: string;
 
     @Column({ name: 'expires_at' })
     expiresAt: Date;

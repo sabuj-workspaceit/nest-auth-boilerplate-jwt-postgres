@@ -9,19 +9,19 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { User } from '../entities/user.entity';
-import { RefreshToken } from '../entities/refresh-token.entity';
-import { EmailVerification } from '../entities/email-verification.entity';
-import { PasswordReset } from '../entities/password-reset.entity';
-import { EmailService } from '../services/email.service';
+import { User } from '../../entities/user.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
+import { EmailVerification } from './entities/email-verification.entity';
+import { PasswordReset } from './entities/password-reset.entity';
+import { EmailService } from '../../services/email.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { hashPassword, comparePassword, hashToken, compareToken } from '../utils/hash.util';
-import { generateOTP } from '../utils/otp.util';
+import { hashPassword, comparePassword, hashToken, compareToken } from '../../utils/hash.util';
+import { generateOTP } from '../../utils/otp.util';
 import { randomUUID } from 'crypto';
 
 @Injectable()
