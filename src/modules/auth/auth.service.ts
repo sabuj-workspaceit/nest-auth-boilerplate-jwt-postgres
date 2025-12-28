@@ -142,6 +142,8 @@ export class AuthService {
                 lastName: user.lastName,
                 isEmailVerified: user.isEmailVerified,
                 isTwoFactorEnabled: user.isTwoFactorEnabled,
+                // get user roles
+                roles: user.roles.map((role) => role.name),
             },
             ...tokens,
         };
