@@ -100,31 +100,39 @@ export class AuthService {
             throw new UnauthorizedException('Account is deactivated');
         }
 
-        // Check if email is verified, send user and isEmailVerified to client instead of throwing error
-        if (!user.isEmailVerified) {
-            // throw new UnauthorizedException('Please verify your email before logging in');
-            return {
-                user: {
-                    id: user.id,
-                    email: user.email,
-                    isEmailVerified: user.isEmailVerified,
-                },
-            };
-        }
-
-        if (user.isTwoFactorEnabled) {
-            return {
-                requires2fa: true,
-                message: '2FA verification required',
-                user: {
-                    id: user.id,
-                    email: user.email,
-                },
-            };
-        }
-
         // Generate tokens
         const tokens = await this.generateTokens(user);
+
+        // Check if email is verified, send user and isEmailVerified to client instead of throwing error
+        // if (!user.isEmailVerified) {
+        //     // throw new UnauthorizedException('Please verify your email before logging in');
+        //     return {
+        //         user: {
+        //             id: user.id,
+        //             email: user.email,
+        //             firstName: user.firstName,
+        //             lastName: user.lastName,
+        //             isEmailVerified: user.isEmailVerified,
+        //             isTwoFactorEnabled: user.isTwoFactorEnabled,
+        //         },
+        //         ...tokens,
+        //     };
+        // }
+
+        // if (user.isTwoFactorEnabled) {
+        //     return {
+        //         message: '2FA verification required',
+        //         user: {
+        //             id: user.id,
+        //             email: user.email,
+        //             firstName: user.firstName,
+        //             lastName: user.lastName,
+        //             isEmailVerified: user.isEmailVerified,
+        //             isTwoFactorEnabled: user.isTwoFactorEnabled,
+        //         },
+        //         ...tokens,
+        //     };
+        // }
 
         return {
             user: {
@@ -133,6 +141,7 @@ export class AuthService {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 isEmailVerified: user.isEmailVerified,
+                isTwoFactorEnabled: user.isTwoFactorEnabled,
             },
             ...tokens,
         };
