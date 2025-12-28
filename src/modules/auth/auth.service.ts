@@ -100,9 +100,16 @@ export class AuthService {
             throw new UnauthorizedException('Account is deactivated');
         }
 
-        // Check if email is verified
+        // Check if email is verified, send user and isEmailVerified to client instead of throwing error
         if (!user.isEmailVerified) {
-            throw new UnauthorizedException('Please verify your email before logging in');
+            // throw new UnauthorizedException('Please verify your email before logging in');
+            return {
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    isEmailVerified: user.isEmailVerified,
+                },
+            };
         }
 
         if (user.isTwoFactorEnabled) {
