@@ -64,6 +64,8 @@ describe('AuthService', () => {
         password: 'hashedPassword',
         firstName: 'John',
         lastName: 'Doe',
+        phone: '1234567890',
+        avatarUrl: 'http://example.com/avatar.jpg',
         isEmailVerified: true,
         isActive: true,
         createdAt: new Date(),

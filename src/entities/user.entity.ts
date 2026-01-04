@@ -31,6 +31,12 @@ export class User {
   @Column({ name: 'last_name' })
   lastName: string;
 
+  @Column({ name: 'phone', nullable: true })
+  phone: string;
+
+  @Column({ name: 'avatar', nullable: true })
+  avatarUrl: string;
+
   @Column({ name: 'is_email_verified', default: false })
   isEmailVerified: boolean;
 

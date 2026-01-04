@@ -182,16 +182,23 @@ describe('UsersController (e2e)', () => {
 
         it('should update user details', async () => {
             const newName = 'UpdatedTargetName';
+            const newPhone = '9876543210';
+            const newAvatar = 'http://example.com/new-avatar.jpg';
+
             const response = await request(app.getHttpServer())
                 .patch(`/users/${targetUserId}`)
                 .set('Authorization', `Bearer ${accessToken}`)
-                .send({ firstName: newName })
+                .send({ firstName: newName, phone: newPhone, avatarUrl: newAvatar })
                 .expect(200);
 
             expect(response.body.firstName).toBe(newName);
+            expect(response.body.phone).toBe(newPhone);
+            expect(response.body.avatarUrl).toBe(newAvatar);
 
             const updatedUser = await userRepository.findOne({ where: { id: targetUserId } });
             expect(updatedUser?.firstName).toBe(newName);
+            expect(updatedUser?.phone).toBe(newPhone);
+            expect(updatedUser?.avatarUrl).toBe(newAvatar);
         });
     });
 
