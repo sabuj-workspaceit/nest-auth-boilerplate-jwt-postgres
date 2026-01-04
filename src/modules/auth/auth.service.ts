@@ -82,7 +82,10 @@ export class AuthService {
         const { email, password } = loginDto;
 
         // Find user
-        const user = await this.userRepository.findOne({ where: { email } });
+        const user = await this.userRepository.findOne({
+            where: { email },
+            relations: ['roles', 'roles.permissions'],
+        });
 
         if (!user) {
             throw new UnauthorizedException('Invalid credentials');
@@ -103,37 +106,6 @@ export class AuthService {
         // Generate tokens
         const tokens = await this.generateTokens(user);
 
-        // Check if email is verified, send user and isEmailVerified to client instead of throwing error
-        // if (!user.isEmailVerified) {
-        //     // throw new UnauthorizedException('Please verify your email before logging in');
-        //     return {
-        //         user: {
-        //             id: user.id,
-        //             email: user.email,
-        //             firstName: user.firstName,
-        //             lastName: user.lastName,
-        //             isEmailVerified: user.isEmailVerified,
-        //             isTwoFactorEnabled: user.isTwoFactorEnabled,
-        //         },
-        //         ...tokens,
-        //     };
-        // }
-
-        // if (user.isTwoFactorEnabled) {
-        //     return {
-        //         message: '2FA verification required',
-        //         user: {
-        //             id: user.id,
-        //             email: user.email,
-        //             firstName: user.firstName,
-        //             lastName: user.lastName,
-        //             isEmailVerified: user.isEmailVerified,
-        //             isTwoFactorEnabled: user.isTwoFactorEnabled,
-        //         },
-        //         ...tokens,
-        //     };
-        // }
-
         return {
             user: {
                 id: user.id,
@@ -142,8 +114,14 @@ export class AuthService {
                 lastName: user.lastName,
                 isEmailVerified: user.isEmailVerified,
                 isTwoFactorEnabled: user.isTwoFactorEnabled,
-                // get user roles
                 roles: user.roles?.map((role) => role.name),
+                permissions: [
+                    ...new Set(
+                        user.roles
+                            ?.flatMap((role) => role.permissions)
+                            ?.map((permission) => permission.slug),
+                    ),
+                ],
             },
             ...tokens,
         };

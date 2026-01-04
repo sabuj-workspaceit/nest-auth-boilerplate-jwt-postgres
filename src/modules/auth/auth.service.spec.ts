@@ -229,6 +229,7 @@ describe('AuthService', () => {
             expect(result).toHaveProperty('refreshToken');
             expect(mockUserRepository.findOne).toHaveBeenCalledWith({
                 where: { email: loginDto.email },
+                relations: ['roles', 'roles.permissions'],
             });
         });
 
@@ -261,16 +262,24 @@ describe('AuthService', () => {
             );
         });
 
-        it('should throw UnauthorizedException if email is not verified', async () => {
+        it('should successfully login even if email is not verified', async () => {
             mockUserRepository.findOne.mockResolvedValue({
                 ...mockUser,
                 isEmailVerified: false,
             });
-            jest.spyOn(hashUtil, 'comparePassword').mockResolvedValue(true);
+            mockJwtService.sign.mockReturnValue('mock-token');
+            mockRefreshTokenRepository.create.mockReturnValue({});
+            mockRefreshTokenRepository.save.mockResolvedValue({});
+            mockConfigService.get.mockReturnValue('secret');
 
-            await expect(service.login(loginDto)).rejects.toThrow(
-                UnauthorizedException,
-            );
+            jest.spyOn(hashUtil, 'comparePassword').mockResolvedValue(true);
+            jest.spyOn(hashUtil, 'hashToken').mockResolvedValue('hashedToken');
+
+            const result = await service.login(loginDto);
+
+            expect(result).toHaveProperty('user');
+            expect(result.user.isEmailVerified).toBe(false);
+            expect(result).toHaveProperty('accessToken');
         });
     });
 

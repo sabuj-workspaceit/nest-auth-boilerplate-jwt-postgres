@@ -8,6 +8,8 @@ import { Permission } from './../src/entities/permission.entity';
 import { Role } from './../src/entities/role.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { EmailService } from './../src/services/email.service';
+
 describe('UsersController (e2e)', () => {
     let app: INestApplication;
     let accessToken: string; // Token for user WITH permissions
@@ -21,7 +23,15 @@ describe('UsersController (e2e)', () => {
     beforeAll(async () => {
         const moduleFixture: TestingModule = await Test.createTestingModule({
             imports: [AppModule],
-        }).compile();
+        })
+            .overrideProvider(EmailService)
+            .useValue({
+                sendVerificationEmail: jest.fn().mockResolvedValue(true),
+                sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
+                sendWelcomeEmail: jest.fn().mockResolvedValue(true),
+                sendPasswordChangedEmail: jest.fn().mockResolvedValue(true),
+            })
+            .compile();
 
         app = moduleFixture.createNestApplication();
         await app.init();
@@ -48,12 +58,13 @@ describe('UsersController (e2e)', () => {
 
         // Create Admin Role with Permission
         const adminRole = await roleRepository.save(roleRepository.create({ name: `ADMIN_ROLE_${Date.now()}`, description: 'Admin' }));
-        // Link permission manually (since we don't have a service here, we use raw query or entity manager ideally, but let's try assuming a relation save)
-        // Actually, we can use the `roles/:id` or just update the entity directly if we loaded relations. 
-        // Easier: Create role, then insert into role_permissions
-        // We can't access join table directly easily with pure repository without `createQueryBuilder` or loading the entity with relations.
-        // Let's assume we can assign the permission to the role via standard TypeORM save if we set the array.
-        adminRole.permissions = [perm];
+
+        let rolesPerm = await permissionRepository.findOne({ where: { slug: 'roles.manage' } });
+        if (!rolesPerm) {
+            rolesPerm = await permissionRepository.save(permissionRepository.create({ slug: 'roles.manage', description: 'Manage Roles' }));
+        }
+
+        adminRole.permissions = [perm, rolesPerm];
         await roleRepository.save(adminRole);
 
         // Assign Admin Role to Admin User directly in DB
@@ -115,6 +126,39 @@ describe('UsersController (e2e)', () => {
         });
     });
 
+    describe('/users (GET)', () => {
+        it('should forbid user without permission', async () => {
+            await request(app.getHttpServer())
+                .get('/users')
+                .set('Authorization', `Bearer ${noPermsAccessToken}`)
+                .expect(403);
+        });
+
+        it('should return paginated users for admin', async () => {
+            const response = await request(app.getHttpServer())
+                .get('/users')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .query({ page: 1, limit: 10 })
+                .expect(200);
+
+            expect(response.body).toHaveProperty('data');
+            expect(response.body).toHaveProperty('totalResults');
+            expect(Array.isArray(response.body.data)).toBe(true);
+            expect(response.body.data.length).toBeGreaterThan(0);
+        });
+
+        it('should filter users by search term', async () => {
+            const response = await request(app.getHttpServer())
+                .get('/users')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .query({ search: 'Target' }) // Matches target user
+                .expect(200);
+
+            expect(response.body.data.length).toBeGreaterThan(0);
+            expect(response.body.data[0].email).toContain('target');
+        });
+    });
+
     describe('/users/:id (GET)', () => {
         it('should return user profile', async () => {
             const response = await request(app.getHttpServer())
@@ -124,6 +168,76 @@ describe('UsersController (e2e)', () => {
 
             expect(response.body.id).toBe(targetUserId);
             expect(response.body).toHaveProperty('email');
+        });
+    });
+
+    describe('/users/:id (PATCH)', () => {
+        it('should forbid user without permission', async () => {
+            await request(app.getHttpServer())
+                .patch(`/users/${targetUserId}`)
+                .set('Authorization', `Bearer ${noPermsAccessToken}`)
+                .send({ firstName: 'UpdatedName' })
+                .expect(403);
+        });
+
+        it('should update user details', async () => {
+            const newName = 'UpdatedTargetName';
+            const response = await request(app.getHttpServer())
+                .patch(`/users/${targetUserId}`)
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({ firstName: newName })
+                .expect(200);
+
+            expect(response.body.firstName).toBe(newName);
+
+            const updatedUser = await userRepository.findOne({ where: { id: targetUserId } });
+            expect(updatedUser?.firstName).toBe(newName);
+        });
+    });
+
+    describe('/users/:id/roles (GET)', () => {
+        it('should return user roles', async () => {
+            const response = await request(app.getHttpServer())
+                .get(`/users/${targetUserId}/roles`)
+                .set('Authorization', `Bearer ${accessToken}`)
+                .expect(200);
+
+            expect(Array.isArray(response.body)).toBe(true);
+            // We assigned a role in previous test
+            expect(response.body.length).toBeGreaterThan(0);
+            expect(response.body[0].id).toBe(roleId);
+        });
+    });
+
+    describe('/users/:id/permissions (GET)', () => {
+        it('should return user permissions (from roles)', async () => {
+            // Need to ensure the assigned role has some permission to test this fully, 
+            // but for now just checking array return is enough structure test
+            const response = await request(app.getHttpServer())
+                .get(`/users/${targetUserId}/permissions`)
+                .set('Authorization', `Bearer ${accessToken}`)
+                .expect(200);
+
+            expect(Array.isArray(response.body)).toBe(true);
+        });
+    });
+
+    describe('/users/:id (DELETE)', () => {
+        it('should forbid user without permission', async () => {
+            await request(app.getHttpServer())
+                .delete(`/users/${targetUserId}`)
+                .set('Authorization', `Bearer ${noPermsAccessToken}`)
+                .expect(403);
+        });
+
+        it('should delete user', async () => {
+            await request(app.getHttpServer())
+                .delete(`/users/${targetUserId}`)
+                .set('Authorization', `Bearer ${accessToken}`)
+                .expect(200);
+
+            const deletedUser = await userRepository.findOne({ where: { id: targetUserId } });
+            expect(deletedUser).toBeNull();
         });
     });
 });

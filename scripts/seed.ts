@@ -57,8 +57,8 @@ async function bootstrap() {
     }
 
     // 3. Create Super Admin User
-    const adminEmail = 'superadmin@example.com';
-    const adminPassword = 'SuperPassword123!';
+    const adminEmail = 'superadmin@yopmail.com';
+    const adminPassword = 'password';
 
     let adminUser = await userRepo.findOne({
         where: { email: adminEmail },
