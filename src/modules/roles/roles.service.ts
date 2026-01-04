@@ -5,6 +5,7 @@ import { Role } from '../../entities/role.entity';
 import { Permission } from '../../entities/permission.entity';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
+import { AddPermissionsDto } from './dto/add-permissions.dto';
 
 @Injectable()
 export class RolesService {
@@ -65,6 +66,28 @@ export class RolesService {
         }
 
         Object.assign(role, rest);
+        return this.rolesRepository.save(role);
+    }
+
+    async addPermissions(id: string, addPermissionsDto: AddPermissionsDto): Promise<Role> {
+        const role = await this.findOne(id);
+        const { permissionIds } = addPermissionsDto;
+
+        if (permissionIds && permissionIds.length > 0) {
+            const permissions = await this.permissionsRepository.findBy({
+                id: In(permissionIds),
+            });
+            if (permissions.length !== permissionIds.length) {
+                throw new NotFoundException('Some permissions were not found');
+            }
+
+            // Append new permissions, avoiding duplicates
+            const existingPermissionIds = role.permissions.map(p => p.id);
+            const newPermissions = permissions.filter(p => !existingPermissionIds.includes(p.id));
+
+            role.permissions = [...role.permissions, ...newPermissions];
+        }
+
         return this.rolesRepository.save(role);
     }
 

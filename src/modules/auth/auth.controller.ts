@@ -21,7 +21,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { TwoFactorAuthCodeDto } from './dto/two-factor-auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RefreshTokenGuard } from './guards/refresh-token.guard';
-import { Public } from './decorators/public.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { User } from '../../entities/user.entity';
 

@@ -592,6 +592,36 @@ describe('AuthService', () => {
             expect(mockUserRepository.save).toHaveBeenCalled();
         });
 
+        it('should successfully update email if unique', async () => {
+            const updateEmailDto = { email: 'newemail@example.com' };
+            const updatedUser = {
+                ...mockUser,
+                email: updateEmailDto.email,
+                isEmailVerified: false,
+            };
+
+            mockUserRepository.findOne.mockResolvedValueOnce(mockUser); // Initial find
+            mockUserRepository.findOne.mockResolvedValueOnce(null); // Check uniqueness
+            mockUserRepository.save.mockResolvedValue(updatedUser);
+
+            const result = await service.updateProfile(mockUser.id, updateEmailDto);
+
+            expect(result.email).toBe(updateEmailDto.email);
+            expect(result.isEmailVerified).toBe(false);
+            expect(mockUserRepository.save).toHaveBeenCalled();
+        });
+
+        it('should throw ConflictException if new email already exists', async () => {
+            const updateEmailDto = { email: 'existing@example.com' };
+
+            mockUserRepository.findOne.mockResolvedValueOnce(mockUser); // Initial find
+            mockUserRepository.findOne.mockResolvedValueOnce({ ...mockUser, id: 'other-user', email: 'existing@example.com' }); // Check uniqueness
+
+            await expect(
+                service.updateProfile(mockUser.id, updateEmailDto),
+            ).rejects.toThrow(ConflictException);
+        });
+
         it('should throw NotFoundException if user not found', async () => {
             mockUserRepository.findOne.mockResolvedValue(null);
 

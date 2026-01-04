@@ -445,6 +445,27 @@ export class AuthService {
             user.lastName = updateProfileDto.lastName;
         }
 
+        if (updateProfileDto.email && updateProfileDto.email !== user.email) {
+            const existingUser = await this.userRepository.findOne({
+                where: { email: updateProfileDto.email },
+            });
+
+            if (existingUser) {
+                throw new ConflictException('User with this email already exists');
+            }
+
+            user.email = updateProfileDto.email;
+            user.isEmailVerified = false; // Reset verification status when email changes
+        }
+
+        if (updateProfileDto.phone) {
+            user.phone = updateProfileDto.phone;
+        }
+
+        if (updateProfileDto.avatarUrl) {
+            user.avatarUrl = updateProfileDto.avatarUrl;
+        }
+
         await this.userRepository.save(user);
 
         return {
@@ -452,6 +473,8 @@ export class AuthService {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
+            phone: user.phone,
+            avatarUrl: user.avatarUrl,
             isEmailVerified: user.isEmailVerified,
             isActive: user.isActive,
             createdAt: user.createdAt,

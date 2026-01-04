@@ -19,8 +19,24 @@ async function bootstrap() {
     // 1. Create Permissions
     const permissionsData = [
         { slug: 'users.manage', description: 'Manage users' },
+        { slug: 'users.create', description: 'Create users' },
+        { slug: 'users.read', description: 'Read users' },
+        { slug: 'users.update', description: 'Update users' },
+        { slug: 'users.delete', description: 'Delete users' },
+        { slug: 'users.assign-role', description: 'Assign roles to users' },
+
         { slug: 'roles.manage', description: 'Manage roles' },
+        { slug: 'roles.create', description: 'Create roles' },
+        { slug: 'roles.read', description: 'Read roles' },
+        { slug: 'roles.update', description: 'Update roles' },
+        { slug: 'roles.delete', description: 'Delete roles' },
+        { slug: 'roles.assign-permission', description: 'Assign permissions to roles' },
+
         { slug: 'permissions.manage', description: 'Manage permissions' },
+        { slug: 'permissions.create', description: 'Create permissions' },
+        { slug: 'permissions.read', description: 'Read permissions' },
+        { slug: 'permissions.update', description: 'Update permissions' },
+        { slug: 'permissions.delete', description: 'Delete permissions' },
     ];
 
     const permissions: Permission[] = [];
@@ -72,6 +88,7 @@ async function bootstrap() {
             password: hashedPassword,
             firstName: 'Super',
             lastName: 'Admin',
+            avatarUrl: 'https://gravatar.com/avatar/bc8cab4ba5c5d2d99b4f07e171bda77f?s=400&d=robohash&r=x',
             isEmailVerified: true,
             isActive: true,
             roles: [superAdminRole],
