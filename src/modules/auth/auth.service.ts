@@ -106,25 +106,28 @@ export class AuthService {
         // Generate tokens
         const tokens = await this.generateTokens(user);
 
-        return {
-            user: {
-                id: user.id,
-                email: user.email,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                isEmailVerified: user.isEmailVerified,
-                isTwoFactorEnabled: user.isTwoFactorEnabled,
-                roles: user.roles?.map((role) => role.name),
-                permissions: [
-                    ...new Set(
-                        user.roles
-                            ?.flatMap((role) => role.permissions)
-                            ?.map((permission) => permission.slug),
-                    ),
-                ],
-            },
-            ...tokens,
+        const userData = {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            isEmailVerified: user.isEmailVerified,
+            isTwoFactorEnabled: user.isTwoFactorEnabled,
+            roles: user.roles?.map((role) => role.name),
+            permissions: [
+                ...new Set(
+                    user.roles
+                        ?.flatMap((role) => role.permissions)
+                        ?.map((permission) => permission.slug),
+                ),
+            ],
         };
+
+        if (user.isTwoFactorEnabled) {
+            return { user: userData };
+        }
+
+        return { user: userData, ...tokens };
     }
 
     async refreshToken(refreshToken: string) {
@@ -532,6 +535,19 @@ export class AuthService {
         );
 
         return { message: '2FA enabled successfully' };
+    }
+
+    async disableTwoFactor(user: User) {
+        if (!user.isTwoFactorEnabled || !user.twoFactorAuthenticationSecret) {
+            throw new BadRequestException('2FA is not enabled for this user');
+        }
+
+        await this.userRepository.update(
+            { id: user.id },
+            { isTwoFactorEnabled: false, twoFactorAuthenticationSecret: undefined },
+        );
+
+        return { message: '2FA disabled successfully' };
     }
 
     async verifyTwoFactor(user: User, code: string) {

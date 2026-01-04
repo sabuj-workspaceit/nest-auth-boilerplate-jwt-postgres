@@ -283,6 +283,21 @@ describe('AuthService', () => {
             expect(result.user.isEmailVerified).toBe(false);
             expect(result).toHaveProperty('accessToken');
         });
+
+        it('should return only user data if 2FA is enabled', async () => {
+            const userwith2fa = {
+                ...mockUser,
+                isTwoFactorEnabled: true,
+            };
+            mockUserRepository.findOne.mockResolvedValue(userwith2fa);
+            jest.spyOn(hashUtil, 'comparePassword').mockResolvedValue(true);
+
+            const result = await service.login(loginDto);
+
+            expect(result).toHaveProperty('user');
+            expect(result).not.toHaveProperty('accessToken');
+            expect(result).not.toHaveProperty('refreshToken');
+        });
     });
 
     describe('refreshToken', () => {
@@ -691,6 +706,29 @@ describe('AuthService', () => {
                 } finally {
                     OTPAuth.TOTP.prototype.validate = originalValidate;
                 }
+            });
+        });
+
+        describe('disableTwoFactor', () => {
+            it('should disable 2FA successfully', async () => {
+                const userWith2FA = { ...mockUser, isTwoFactorEnabled: true, twoFactorAuthenticationSecret: 'secret' };
+                mockUserRepository.update.mockResolvedValue({});
+
+                const result = await service.disableTwoFactor(userWith2FA as any);
+
+                expect(result).toEqual({ message: '2FA disabled successfully' });
+                expect(mockUserRepository.update).toHaveBeenCalledWith(
+                    { id: mockUser.id },
+                    { isTwoFactorEnabled: false, twoFactorAuthenticationSecret: undefined },
+                );
+            });
+
+            it('should throw BadRequestException if 2FA is not enabled', async () => {
+                const userWithout2FA = { ...mockUser, isTwoFactorEnabled: false };
+
+                await expect(service.disableTwoFactor(userWithout2FA as any)).rejects.toThrow(
+                    BadRequestException,
+                );
             });
         });
 

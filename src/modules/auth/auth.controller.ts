@@ -125,13 +125,18 @@ export class AuthController {
         return this.authService.enableTwoFactor(user, twoFactorAuthCodeDto.code);
     }
 
+    @Post('2fa/disable')
+    @HttpCode(HttpStatus.OK)
+    async disableTwoFactor(@CurrentUser() user: User) {
+        return this.authService.disableTwoFactor(user);
+    }
+
     @Public()
     @Post('2fa/authenticate')
     @HttpCode(HttpStatus.OK)
     async authenticateTwoFactor(
         @Body() twoFactorAuthCodeDto: TwoFactorAuthCodeDto,
-        @Body('email') email: string,
     ) {
-        return this.authService.loginWith2fa(email, twoFactorAuthCodeDto.code);
+        return this.authService.loginWith2fa(twoFactorAuthCodeDto.email, twoFactorAuthCodeDto.code);
     }
 }

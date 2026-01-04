@@ -32,6 +32,7 @@ describe('AuthController', () => {
         updateProfile: jest.fn(),
         generateTwoFactorSecret: jest.fn(),
         enableTwoFactor: jest.fn(),
+        disableTwoFactor: jest.fn(),
         loginWith2fa: jest.fn(),
     };
 
@@ -91,6 +92,24 @@ describe('AuthController', () => {
                 user: mockUser,
                 accessToken: 'access-token',
                 refreshToken: 'refresh-token',
+            };
+
+            mockAuthService.login.mockResolvedValue(expectedResult);
+
+            const result = await controller.login(loginDto);
+
+            expect(result).toEqual(expectedResult);
+            expect(authService.login).toHaveBeenCalledWith(loginDto);
+        });
+
+        it('should return only user data when 2FA is enabled', async () => {
+            const loginDto = {
+                email: 'test2fa@example.com',
+                password: 'Password123!',
+            };
+
+            const expectedResult = {
+                user: { ...mockUser, isTwoFactorEnabled: true },
             };
 
             mockAuthService.login.mockResolvedValue(expectedResult);
@@ -365,27 +384,39 @@ describe('AuthController', () => {
                 const expectedResult = { message: '2FA enabled successfully' };
                 mockAuthService.enableTwoFactor = jest.fn().mockResolvedValue(expectedResult);
 
-                const result = await controller.enableTwoFactor(mockUser as any, dto);
+                const result = await controller.enableTwoFactor(mockUser as any, dto as any);
 
                 expect(result).toEqual(expectedResult);
                 expect(authService.enableTwoFactor).toHaveBeenCalledWith(mockUser, dto.code);
             });
         });
 
+        describe('disableTwoFactor', () => {
+            it('should disable 2FA', async () => {
+                const expectedResult = { message: '2FA disabled successfully' };
+                const userSpy = { ...mockUser } as any; // Cast mockUser to any to bypass strict type checking if needed for tests
+                mockAuthService.disableTwoFactor = jest.fn().mockResolvedValue(expectedResult);
+
+                const result = await controller.disableTwoFactor(userSpy);
+
+                expect(result).toEqual(expectedResult);
+                expect(authService.disableTwoFactor).toHaveBeenCalledWith(userSpy);
+            });
+        });
+
         describe('authenticateTwoFactor', () => {
             it('should authenticate and return tokens', async () => {
-                const dto = { code: '123456' };
-                const email = 'test@example.com';
+                const dto = { code: '123456', email: 'test@example.com' };
                 const expectedResult = {
                     accessToken: 'access-token',
                     refreshToken: 'refresh-token',
                 };
                 mockAuthService.loginWith2fa = jest.fn().mockResolvedValue(expectedResult);
 
-                const result = await controller.authenticateTwoFactor(dto, email);
+                const result = await controller.authenticateTwoFactor(dto);
 
                 expect(result).toEqual(expectedResult);
-                expect(authService.loginWith2fa).toHaveBeenCalledWith(email, dto.code);
+                expect(authService.loginWith2fa).toHaveBeenCalledWith(dto.email, dto.code);
             });
         });
     });
