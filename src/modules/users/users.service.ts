@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { hashPassword } from '../../utils/hash.util';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
@@ -8,6 +9,7 @@ import { AssignRolesDto } from './dto/assign-roles.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersFilterDto } from './dto/users-filter.dto';
 import { paginate } from '../../common/utils/pagination.util';
+import { CreateUserDto } from './dto/create-user.dto';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 
 @Injectable()
@@ -49,9 +51,66 @@ export class UsersService {
         return user;
     }
 
+    async create(createUserDto: CreateUserDto): Promise<User> {
+        const { email, password, roles: roleIds, ...otherDetails } = createUserDto;
+
+        const existingUser = await this.usersRepository.findOne({ where: { email } });
+        if (existingUser) {
+            throw new ConflictException('User with this email already exists');
+        }
+
+        const hashedPassword = await hashPassword(password);
+
+        let roles: Role[] = [];
+        if (roleIds && roleIds.length > 0) {
+            roles = await this.rolesRepository.findBy({
+                id: In(roleIds),
+            });
+
+            if (roles.length !== roleIds.length) {
+                throw new NotFoundException('Some roles were not found');
+            }
+        }
+
+        const user = this.usersRepository.create({
+            email,
+            password: hashedPassword,
+            ...otherDetails,
+            roles,
+        });
+
+        return this.usersRepository.save(user);
+    }
+
     async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
         const user = await this.findOne(id);
-        Object.assign(user, updateUserDto);
+        const { roles: roleIds, email, password, ...otherUpdates } = updateUserDto;
+
+        if (roleIds) {
+            const roles = await this.rolesRepository.findBy({
+                id: In(roleIds),
+            });
+
+            if (roles.length !== roleIds.length) {
+                throw new NotFoundException('Some roles were not found');
+            }
+            user.roles = roles;
+        }
+
+        if (email && email !== user.email) {
+            const existingUser = await this.usersRepository.findOne({ where: { email } });
+            if (existingUser) {
+                throw new ConflictException('User with this email already exists');
+            }
+            user.email = email;
+            user.isEmailVerified = false;
+        }
+
+        if (password) {
+            user.password = await hashPassword(password);
+        }
+
+        Object.assign(user, otherUpdates);
         return this.usersRepository.save(user);
     }
 

@@ -6,6 +6,7 @@ import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersFilterDto } from './dto/users-filter.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -28,6 +29,12 @@ export class UsersController {
     @RequirePermissions('users.manage', 'users.read')
     findOne(@Param('id') id: string) {
         return this.usersService.findOne(id);
+    }
+
+    @Post()
+    @RequirePermissions('users.manage', 'users.create')
+    create(@Body() createUserDto: CreateUserDto) {
+        return this.usersService.create(createUserDto);
     }
 
     @Patch(':id')

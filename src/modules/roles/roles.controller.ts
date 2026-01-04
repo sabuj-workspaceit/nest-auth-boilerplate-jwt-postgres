@@ -53,7 +53,7 @@ export class RolesController {
 
     @Post(':id/permissions')
     @RequirePermissions('roles.manage', 'roles.assign-permission')
-    addPermission(@Param('id') id: string, @Body() addPermissionDto: AddPermissionsDto) {
-        return this.rolesService.addPermissions(id, addPermissionDto);
+    setPermissions(@Param('id') id: string, @Body() addPermissionDto: AddPermissionsDto) {
+        return this.rolesService.setPermissions(id, addPermissionDto);
     }
 }

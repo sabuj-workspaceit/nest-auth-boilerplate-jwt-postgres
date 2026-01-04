@@ -69,7 +69,7 @@ export class RolesService {
         return this.rolesRepository.save(role);
     }
 
-    async addPermissions(id: string, addPermissionsDto: AddPermissionsDto): Promise<Role> {
+    async setPermissions(id: string, addPermissionsDto: AddPermissionsDto): Promise<Role> {
         const role = await this.findOne(id);
         const { permissionIds } = addPermissionsDto;
 
@@ -80,12 +80,9 @@ export class RolesService {
             if (permissions.length !== permissionIds.length) {
                 throw new NotFoundException('Some permissions were not found');
             }
-
-            // Append new permissions, avoiding duplicates
-            const existingPermissionIds = role.permissions.map(p => p.id);
-            const newPermissions = permissions.filter(p => !existingPermissionIds.includes(p.id));
-
-            role.permissions = [...role.permissions, ...newPermissions];
+            role.permissions = permissions;
+        } else {
+            role.permissions = [];
         }
 
         return this.rolesRepository.save(role);
