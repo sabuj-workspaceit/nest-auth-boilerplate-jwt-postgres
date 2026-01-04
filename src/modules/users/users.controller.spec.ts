@@ -3,6 +3,8 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+
+import { AssignRolesToUsersDto } from './dto/assign-roles-to-users.dto';
 import { User } from '../../entities/user.entity';
 
 describe('UsersController', () => {
@@ -24,6 +26,7 @@ describe('UsersController', () => {
     findOne: jest.fn(),
     remove: jest.fn(),
     assignRoles: jest.fn(),
+    assignRolesToUsers: jest.fn(),
     getRoles: jest.fn(),
     getPermissions: jest.fn(),
   };
@@ -74,6 +77,22 @@ describe('UsersController', () => {
       await controller.update('1', updateUserDto);
 
       expect(service.update).toHaveBeenCalledWith('1', updateUserDto);
+    });
+  });
+  describe('assignRolesToUsers', () => {
+    it('should assign roles to multiple users', async () => {
+      const assignRolesToUsersDto: AssignRolesToUsersDto = {
+        userIds: ['user-1', 'user-2'],
+        roleIds: ['role-1'],
+      };
+
+      const result = [mockUser, mockUser] as User[];
+      mockUsersService.assignRolesToUsers.mockResolvedValue(result);
+
+      const response = await controller.assignRolesToUsers(assignRolesToUsersDto);
+
+      expect(service.assignRolesToUsers).toHaveBeenCalledWith(assignRolesToUsersDto);
+      expect(response).toEqual(result);
     });
   });
 });

@@ -7,6 +7,7 @@ import { RequirePermissions } from '../../common/decorators/permissions.decorato
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersFilterDto } from './dto/users-filter.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { AssignRolesToUsersDto } from './dto/assign-roles-to-users.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -17,6 +18,12 @@ export class UsersController {
     @RequirePermissions('users.manage', 'users.assign-role', 'roles.manage')
     assignRoles(@Param('id') id: string, @Body() assignRolesDto: AssignRolesDto) {
         return this.usersService.assignRoles(id, assignRolesDto);
+    }
+
+    @Post('assign-roles')
+    @RequirePermissions('users.manage', 'users.assign-role', 'roles.manage')
+    assignRolesToUsers(@Body() assignRolesToUsersDto: AssignRolesToUsersDto) {
+        return this.usersService.assignRolesToUsers(assignRolesToUsersDto);
     }
 
     @Get()

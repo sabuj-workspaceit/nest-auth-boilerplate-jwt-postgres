@@ -11,6 +11,7 @@ import { UsersFilterDto } from './dto/users-filter.dto';
 import { paginate } from '../../common/utils/pagination.util';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { AssignRolesToUsersDto } from './dto/assign-roles-to-users.dto';
 
 @Injectable()
 export class UsersService {
@@ -135,6 +136,32 @@ export class UsersService {
 
         user.roles = roles;
         return this.usersRepository.save(user);
+    }
+
+    async assignRolesToUsers(assignRolesToUsersDto: AssignRolesToUsersDto): Promise<User[]> {
+        const { userIds, roleIds } = assignRolesToUsersDto;
+
+        const users = await this.usersRepository.findBy({
+            id: In(userIds),
+        });
+
+        if (users.length !== userIds.length) {
+            throw new NotFoundException('Some users were not found');
+        }
+
+        const roles = await this.rolesRepository.findBy({
+            id: In(roleIds),
+        });
+
+        if (roles.length !== roleIds.length) {
+            throw new NotFoundException('Some roles were not found');
+        }
+
+        for (const user of users) {
+            user.roles = roles;
+        }
+
+        return this.usersRepository.save(users);
     }
 
     async getRoles(id: string): Promise<Role[]> {

@@ -7,6 +7,7 @@ import { Repository } from 'typeorm';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { hashPassword } from '../../utils/hash.util';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AssignRolesToUsersDto } from './dto/assign-roles-to-users.dto';
 
 // Mock hash utility
 jest.mock('../../utils/hash.util', () => ({
@@ -19,18 +20,19 @@ describe('UsersService', () => {
   let rolesRepository: Repository<Role>;
 
   const mockUser = {
-      id: 'user-id',
-      email: 'old@example.com',
-      password: 'oldPassword',
-      firstName: 'Old',
-      lastName: 'Name',
-      roles: [],
-      isEmailVerified: true,
+    id: 'user-id',
+    email: 'old@example.com',
+    password: 'oldPassword',
+    firstName: 'Old',
+    lastName: 'Name',
+    roles: [],
+    isEmailVerified: true,
   } as unknown as User;
 
   const mockUsersRepository = {
     findOne: jest.fn(),
     save: jest.fn(),
+    findBy: jest.fn(),
   };
 
   const mockRolesRepository = {
@@ -118,6 +120,62 @@ describe('UsersService', () => {
 
       expect(result.firstName).toBe('New');
       expect(result.lastName).toBe('Name');
+    });
+  });
+  describe('assignRolesToUsers', () => {
+    it('should assign roles to users', async () => {
+      const assignRolesToUsersDto: AssignRolesToUsersDto = {
+        userIds: ['user-1', 'user-2'],
+        roleIds: ['role-1'],
+      };
+
+      const users = [
+        { id: 'user-1', roles: [] },
+        { id: 'user-2', roles: [] },
+      ] as unknown as User[];
+
+      const roles = [{ id: 'role-1' }] as Role[];
+
+      mockUsersRepository.findBy.mockResolvedValue(users);
+      mockRolesRepository.findBy.mockResolvedValue(roles);
+      mockUsersRepository.save.mockResolvedValue(users);
+
+      await service.assignRolesToUsers(assignRolesToUsersDto);
+
+      expect(mockUsersRepository.findBy).toHaveBeenCalledWith({ id: expect.anything() });
+      expect(mockRolesRepository.findBy).toHaveBeenCalledWith({ id: expect.anything() });
+      expect(mockUsersRepository.save).toHaveBeenCalledWith(expect.arrayContaining([
+        expect.objectContaining({ roles: roles }),
+        expect.objectContaining({ roles: roles }),
+      ]));
+    });
+
+    it('should throw NotFoundException if some users are missing', async () => {
+      const assignRolesToUsersDto: AssignRolesToUsersDto = {
+        userIds: ['user-1', 'user-2'],
+        roleIds: ['role-1'],
+      };
+
+      mockUsersRepository.findBy.mockResolvedValue([{ id: 'user-1' } as User]); // Only one user found
+
+      await expect(service.assignRolesToUsers(assignRolesToUsersDto)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException if some roles are missing', async () => {
+      const assignRolesToUsersDto: AssignRolesToUsersDto = {
+        userIds: ['user-1', 'user-2'],
+        roleIds: ['role-1', 'role-2'],
+      };
+
+      const users = [
+        { id: 'user-1', roles: [] },
+        { id: 'user-2', roles: [] },
+      ] as unknown as User[];
+
+      mockUsersRepository.findBy.mockResolvedValue(users);
+      mockRolesRepository.findBy.mockResolvedValue([{ id: 'role-1' } as Role]); // Only one role found
+
+      await expect(service.assignRolesToUsers(assignRolesToUsersDto)).rejects.toThrow(NotFoundException);
     });
   });
 });
